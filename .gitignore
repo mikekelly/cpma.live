@@ -1,5 +1,12 @@
 .idea
 build
 
-baseq3/*
-!baseq3/.keep
+# Downloaded game assets (run scripts/download-assets.sh)
+website/public/baseq3/*.pk3
+website/public/cpma/*.pk3
+server/baseq3/*.pk3
+server/cpma/*.pk3
+server/cpma/cfg-maps/
+.assets-tmp/
+.baseq3-tmp/
+.cpma-tmp/

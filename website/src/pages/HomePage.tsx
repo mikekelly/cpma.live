@@ -5,7 +5,6 @@ import ServerPickerSkeleton from "@/components/server-picker-skeleton.tsx";
 import {ErrorBoundary} from 'react-error-boundary'
 
 export default function HomePage() {
-
     return (
         <>
             <Hero/>

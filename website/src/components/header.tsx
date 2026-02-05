@@ -6,8 +6,7 @@ export function Header() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <Link to={"/"} className="flex items-center gap-3">
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-foreground">Q3JS</h1>
-                    <p className="text-xs text-muted-foreground font-mono">v0.0.1</p>
+                    <h1 className="text-xl font-bold tracking-tight text-foreground">Q3 Promode<span className="text-primary">.js</span></h1>
                 </div>
             </Link>
 

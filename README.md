@@ -53,12 +53,39 @@ Browser (React + ioquake3.wasm)
 > must own a legal copy of Quake III Arena or Quake III: Team Arena and copy the corresponding `pak` files from your
 > installation.
 
+## CPMA (Challenge ProMode Arena)
+
+This project runs **CPMA 1.53**, a popular Quake 3 mod that provides:
+- **CPM physics** – air-control based movement with strafejumping and bunnyhopping
+- **Additional game modes** – Clan Arena, Freeze Tag, Capture Strike, NTF
+- **Competitive features** – enhanced HUD, improved netcode settings, referee system
+
+### CPMA Game Types
+
+| Type | Mode |
+|------|------|
+| 0 | FFA (Free For All) |
+| 1 | Duel |
+| 2 | HoonyMode |
+| 3 | TDM (Team Deathmatch) |
+| 4 | CTF (Capture The Flag) |
+| 5 | Clan Arena |
+| 6 | Freeze Tag |
+| 7 | Capture Strike |
+| 8 | NTF (Not Team Fortress) |
+
 ## Quick start
 
 1. **Acquire assets**
     - Copy the baseq3 folder into `website/public/` so the browser client can download them.
 
-2. **Build the WebAssembly client**
+2. **Download CPMA**
+   ```bash
+   ./scripts/download-cpma.sh
+   ```
+   This downloads CPMA 1.53 and installs it to `website/public/cpma/` and `server/cpma/`.
+
+3. **Build the WebAssembly client**
    ```bash
    pushd game
    ./build.sh                   # installs/activates emsdk 4.0.19 and compiles ioquake3
@@ -67,7 +94,7 @@ Browser (React + ioquake3.wasm)
    The output `game/build/Release/ioquake3.{js,wasm}` must be copied (or symlinked) into `website/src/lib/`. The script
    already patches OpenGL shaders for WebGL 2 / GLES precision requirements.
 
-3. **Run the Quarkus service**
+4. **Run the Quarkus service**
    ```bash
    pushd master
    ./mvnw quarkus:dev           # REST API on http://localhost:8080, UDP master on :27950
@@ -75,7 +102,7 @@ Browser (React + ioquake3.wasm)
    ```
    Test the API: `curl http://localhost:8080/api/servers`.
 
-4. **Build & run the dedicated server + proxy**
+5. **Build & run the dedicated server + proxy**
    ```bash
    pushd server
    ./build.sh                   # cmake build of ioq3ded in server/build/Release
@@ -85,7 +112,7 @@ Browser (React + ioquake3.wasm)
     - The proxy listens on `WS_PORT` (default `27961`) and points to `Q3_HOST:Q3_PORT` (default `127.0.0.1:27960`).
       Override via env vars when running `entrypoint.sh` or the Docker container.
 
-5. **Run the web UI**
+6. **Run the web UI**
    ```bash
    pushd website
    npm install

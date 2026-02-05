@@ -26,8 +26,11 @@ export function resolveIDBFS(module: any) {
 
 export async function ensureMounts(module: any): Promise<{ persist: boolean }> {
     const {FS} = module;
-    FS.mkdirTree("/baseq3");
-    FS.mkdirTree("/baseq3/vm");
+    const mountPoints = ["/baseq3", "/cpma"];
+
+    for (const mp of mountPoints) {
+        FS.mkdirTree(mp);
+    }
 
     const IDBFS = resolveIDBFS(module);
     if (!IDBFS) {
@@ -35,37 +38,41 @@ export async function ensureMounts(module: any): Promise<{ persist: boolean }> {
         return {persist: false};
     }
 
-    try {
-        FS.mount(IDBFS, {}, "/baseq3");
-    } catch {
-        // already mounted
+    for (const mp of mountPoints) {
+        try {
+            FS.mount(IDBFS, {}, mp);
+        } catch {
+            // already mounted
+        }
     }
 
     const current = localStorage.getItem(VERSION_KEY);
     if (current !== DATA_VERSION) {
         try {
             await syncfs(module, true);
-            for (const e of FS.readdir("/baseq3")) {
-                if (e === "." || e === "..") continue;
-                const p = `/baseq3/${e}`;
-                try {
-                    const stat = FS.stat(p);
-                    if ((stat.mode & 0o40000) === 0o40000) {
-                        try {
-                            for (const c of FS.readdir(p)) {
-                                if (c === "." || c === "..") continue;
-                                try {
-                                    FS.unlink(`${p}/${c}`);
-                                } catch {
+            for (const mp of mountPoints) {
+                for (const e of FS.readdir(mp)) {
+                    if (e === "." || e === "..") continue;
+                    const p = `${mp}/${e}`;
+                    try {
+                        const stat = FS.stat(p);
+                        if ((stat.mode & 0o40000) === 0o40000) {
+                            try {
+                                for (const c of FS.readdir(p)) {
+                                    if (c === "." || c === "..") continue;
+                                    try {
+                                        FS.unlink(`${p}/${c}`);
+                                    } catch {
+                                    }
                                 }
+                                FS.rmdir(p);
+                            } catch {
                             }
-                            FS.rmdir(p);
-                        } catch {
+                        } else {
+                            FS.unlink(p);
                         }
-                    } else {
-                        FS.unlink(p);
+                    } catch {
                     }
-                } catch {
                 }
             }
             await syncfs(module, false);
@@ -94,27 +101,36 @@ export function makeRafUpdater(setter: (p: Prog) => void) {
     };
 }
 
-// Fetch into a single preallocated Uint8Array using Content-Length
-export async function fetchIntoUint8(url: URL, onChunk: (n: number) => void) {
-    // HEAD for length
-    let expected: number | undefined;
+// Read from a stream with a timeout to detect stalled downloads
+async function readWithTimeout(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    timeoutMs: number,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Download stalled (no data received for 30s)")), timeoutMs);
+    });
     try {
-        const h = await fetch(url, {method: "HEAD"});
-        const cl = h.headers.get("content-length");
-        if (cl) expected = parseInt(cl, 10);
-    } catch {
-        // ignore
+        return await Promise.race([reader.read(), timeout]);
+    } finally {
+        clearTimeout(timer!);
     }
+}
 
+// Fetch into a single preallocated Uint8Array using Content-Length from GET response
+export async function fetchIntoUint8(url: URL, onChunk: (n: number) => void) {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
+
+    const cl = resp.headers.get("content-length");
+    const expected = cl ? parseInt(cl, 10) : undefined;
 
     if (expected && resp.body) {
         const out = new Uint8Array(expected);
         const reader = resp.body.getReader();
         let off = 0;
         for (; ;) {
-            const {done, value} = await reader.read();
+            const {done, value} = await readWithTimeout(reader, 30_000);
             if (done) break;
             out.set(value!, off);
             off += value!.length;

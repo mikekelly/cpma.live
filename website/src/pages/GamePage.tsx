@@ -31,15 +31,23 @@ export default function GamePage() {
             {prog.pct < 100 && (
                 <Card
                     className="absolute bottom-4 left-4 right-4 p-4 bg-background/80 backdrop-blur border border-border">
-                    <div className="text-xs text-muted-foreground mb-2 font-mono">
-                        {prog.current ? `Downloading: ${prog.current}` : "Preparing downloads"}
-                    </div>
-                    <Progress value={prog.pct} className="h-2 bg-secondary"/>
-                    <div className="text-xs text-muted-foreground mt-2 font-mono">
-                        {prog.total
-                            ? `${(prog.received / (1024 * 1024)).toFixed(1)} MB / ${(prog.total / (1024 * 1024)).toFixed(1)} MB`
-                            : `${prog.pct}%`}
-                    </div>
+                    {prog.pct === -1 ? (
+                        <div className="text-sm text-red-400 font-mono">
+                            {prog.current}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="text-xs text-muted-foreground mb-2 font-mono">
+                                {prog.current ? `Downloading: ${prog.current}` : "Preparing downloads"}
+                            </div>
+                            <Progress value={prog.pct} className="h-2 bg-secondary"/>
+                            <div className="text-xs text-muted-foreground mt-2 font-mono">
+                                {prog.total
+                                    ? `${(prog.received / (1024 * 1024)).toFixed(1)} MB / ${(prog.total / (1024 * 1024)).toFixed(1)} MB`
+                                    : `${prog.pct}%`}
+                            </div>
+                        </>
+                    )}
                 </Card>
             )}
         </div>

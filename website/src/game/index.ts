@@ -24,9 +24,52 @@ const config = {
             {src: "baseq3/pak6.pk3", dst: "/baseq3"},
             {src: "baseq3/pak7.pk3", dst: "/baseq3"},
             {src: "baseq3/pak8.pk3", dst: "/baseq3"},
-            {src: "baseq3/vm/cgame.qvm", dst: "/baseq3/vm"},
-            {src: "baseq3/vm/qagame.qvm", dst: "/baseq3/vm"},
-            {src: "baseq3/vm/ui.qvm", dst: "/baseq3/vm"},
+            {src: "baseq3/xcsv_bq3hi-res.pk3", dst: "/baseq3"},
+            {src: "baseq3/quake3-live-sounds.pk3", dst: "/baseq3"},
+            {src: "baseq3/zpack-weapons.pk3", dst: "/baseq3"},
+        ],
+    },
+    cpma: {
+        files: [
+            {src: "cpma/z-cpma-pak153.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm1a.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm2.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm3.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm3a.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm4.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm4a.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm5.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm6.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm7.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm8.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm9.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm10.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm11.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm11a.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm12.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm13.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm14.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm15.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm16.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm17.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm18.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm18r.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm19.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm20.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm21.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm22.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm23.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm24.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm25.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm26_cpmctf4.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm27.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm28.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpm29.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpma3.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpmctf1.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpmctf2.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpmctf3.pk3", dst: "/cpma"},
+            {src: "cpma/map_cpmctf5.pk3", dst: "/cpma"},
         ],
     },
 } as const;
@@ -34,7 +77,7 @@ const config = {
 export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
     const com_basegame = "baseq3" as const;
     const fs_basegame = "baseq3" as const;
-    const fs_game = "baseq3" as const;
+    const fs_game = "cpma" as const;
 
     let generatedArguments = `
           +set sv_pure 0
@@ -45,6 +88,11 @@ export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
           +set cl_allowDownload 1
           +set con_scale 2
           +set fs_game "${fs_game}"
+          +set cg_forceModel 1
+          +set cg_enemyModel sarge
+          +set cg_teamModel sarge
+          +set model sarge
+          +set headmodel sarge
         `;
     generatedArguments += ` +connect ${host}:${proxyPort} `;
     generatedArguments += ` +set name "${name.replace(/"/g, "'")}" `;
@@ -71,7 +119,7 @@ export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
                 try {
                     const {persist} = await ensureMounts(module);
 
-                    const gameDirs = [com_basegame, fs_basegame, fs_game];
+                    const gameDirs = [...new Set([com_basegame, fs_basegame, fs_game])];
                     const fileEntries = gameDirs.flatMap((g) => (config as any)[g].files);
                     const urls = fileEntries.map((f: { src: string }) => new URL(f.src, dataURL));
 
@@ -101,23 +149,59 @@ export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
                         });
 
                         if (!exists) {
-                            const data = await fetchIntoUint8(url, (n) => {
-                                receivedBytes += n;
-                                const pct = totalBytes ? Math.min(100, Math.floor((receivedBytes / totalBytes) * 100)) : 0;
-                                rafUpdate({received: receivedBytes, total: totalBytes, pct, current: f.src});
-                            });
+                            let fileBytes = 0;
+                            let lastError: unknown;
 
-                            module.FS.mkdirTree(f.dst);
-                            module.FS.writeFile(dstPath, data);
+                            for (let attempt = 0; attempt < 3; attempt++) {
+                                try {
+                                    // Reset this file's progress on retry
+                                    receivedBytes -= fileBytes;
+                                    fileBytes = 0;
+
+                                    const data = await fetchIntoUint8(url, (n) => {
+                                        receivedBytes += n;
+                                        fileBytes += n;
+                                        const pct = totalBytes ? Math.min(100, Math.floor((receivedBytes / totalBytes) * 100)) : 0;
+                                        rafUpdate({received: receivedBytes, total: totalBytes, pct, current: f.src});
+                                    });
+
+                                    module.FS.mkdirTree(f.dst);
+                                    module.FS.writeFile(dstPath, data);
+                                    lastError = null;
+                                    break;
+                                } catch (e) {
+                                    lastError = e;
+                                    console.warn(`[ioq3] Download attempt ${attempt + 1}/3 failed for ${f.src}:`, e);
+                                    if (attempt < 2) {
+                                        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                                    }
+                                }
+                            }
+
+                            if (lastError) throw lastError;
                         }
                     }
+
+                    // Write a placeholder CD key to bypass the demo CD key check
+                    module.FS.mkdirTree("/baseq3");
+                    module.FS.writeFile("/baseq3/q3key", "AAAABBBBCCCCDDDD");
 
                     if (persist) {
                         await syncfs(module, false);
                     }
                     rafUpdate({received: totalBytes, total: totalBytes, pct: 100, current: "done"});
-                } finally {
+
+                    // Only start the engine after ALL downloads succeed
                     module.removeRunDependency("setup-ioq3-filesystem");
+                } catch (e) {
+                    console.error("[ioq3] Asset download failed:", e);
+                    rafUpdate({
+                        received: 0,
+                        total: 0,
+                        pct: -1,
+                        current: `Download failed: ${e instanceof Error ? e.message : String(e)}. Refresh to retry.`
+                    });
+                    // Do NOT remove the dependency - keep the engine blocked
                 }
             },
         ],

@@ -7,15 +7,37 @@ export function useFullscreenOnF11() {
                 e.preventDefault();
                 const el = document.documentElement;
                 if (!document.fullscreenElement) {
-                    el.requestFullscreen().catch(() => {
-                    });
+                    el.requestFullscreen().then(() => {
+                        // Lock keyboard to capture ESC
+                        if ("keyboard" in navigator && "lock" in (navigator.keyboard as any)) {
+                            (navigator.keyboard as any).lock(["Escape"]).catch(() => {
+                                // Keyboard lock not supported or failed
+                            });
+                        }
+                    }).catch(() => {});
                 } else {
-                    document.exitFullscreen().catch(() => {
-                    });
+                    if ("keyboard" in navigator && "unlock" in (navigator.keyboard as any)) {
+                        (navigator.keyboard as any).unlock();
+                    }
+                    document.exitFullscreen().catch(() => {});
                 }
             }
         };
+
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                // Exited fullscreen, unlock keyboard
+                if ("keyboard" in navigator && "unlock" in (navigator.keyboard as any)) {
+                    (navigator.keyboard as any).unlock();
+                }
+            }
+        };
+
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            document.removeEventListener("fullscreenchange", handleFullscreenChange);
+        };
     }, []);
 }

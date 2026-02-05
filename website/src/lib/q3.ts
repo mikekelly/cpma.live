@@ -51,9 +51,13 @@ export type Q3ServerTarget = {
 export const GAME_TYPES: Record<number, string> = {
     0: "FFA",
     1: "Duel",
-    2: "Single Player",
-    3: "Team DM",
+    2: "HoonyMode",
+    3: "TDM",
     4: "CTF",
+    5: "Clan Arena",
+    6: "Freeze Tag",
+    7: "Capture Strike",
+    8: "NTF",
 }
 
 
