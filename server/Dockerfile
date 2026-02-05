@@ -40,4 +40,4 @@ EXPOSE 27961
 EXPOSE 27960/udp
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["+set", "dedicated", "2", "+set", "sv_pure", "1", "+set", "net_ip", "0.0.0.0", "+set", "com_hunkMegs", "256", "+set", "fs_game", "cpma", "+set", "vm_game", "2", "+exec", "server.cfg"]
+CMD ["+set", "dedicated", "1", "+set", "sv_pure", "1", "+set", "net_ip", "0.0.0.0", "+set", "com_hunkMegs", "256", "+set", "fs_game", "cpma", "+set", "vm_game", "2", "+exec", "server.cfg"]
