@@ -10,6 +10,7 @@ Environment=TARGET_HOST=127.0.0.1
 Environment=TARGET_PORT=27960
 Environment=USE_URL_PARAMS=true
 Environment=SEND_HEARTBEAT=true
+Environment=HEARTBEAT_PORTS=27960,27962,27963
 Environment=MASTER_SERVER_BASE=https://master.cpma.live
 Environment=TLS_CERT=/etc/letsencrypt/live/proxy.cpma.live/fullchain.pem
 Environment=TLS_KEY=/etc/letsencrypt/live/proxy.cpma.live/privkey.pem
