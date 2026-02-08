@@ -3,10 +3,12 @@ import ioquake3 from "@/lib/ioquake3.js";
 import wasm from "@/lib/ioquake3.wasm?url"
 import {getWsProtocol} from "@/lib/utils.ts";
 import {ensureMounts, estimateTotalBytes, fetchIntoUint8, type Prog, syncfs} from "@/lib/fs.ts";
+import {env} from "@/env.ts";
 
 type Params = {
     host: string;
     proxyPort: number;
+    targetPort: number;
     name: string;
     config?: string;
     rafUpdate: (prog: Prog) => void;
@@ -75,7 +77,7 @@ const config = {
     },
 } as const;
 
-export default function startGame({host, proxyPort, name, config: extraConfig, rafUpdate}: Params) {
+export default function startGame({host, proxyPort, targetPort, name, config: extraConfig, rafUpdate}: Params) {
     const com_basegame = "baseq3" as const;
     const fs_basegame = "baseq3" as const;
     const fs_game = "cpma" as const;
@@ -102,11 +104,11 @@ export default function startGame({host, proxyPort, name, config: extraConfig, r
         generatedArguments += ` +set cg_autoswitch "0" +bind 3 "weapon 7" +bind e "+zoom" `;
     }
 
-    const dataURL = new URL(location.origin + location.pathname);
+    const dataURL = new URL(env.VITE_ASSETS_URL ?? location.origin);
 
     ioquake3({
         websocket: {
-            url: `${getWsProtocol()}//${host}:${proxyPort}`,
+            url: `${getWsProtocol()}//${env.VITE_PROXY_URL}?host=${host}&port=${targetPort}`,
             subprotocol: "binary"
         },
         canvas: document.getElementById("canvas") as HTMLCanvasElement,

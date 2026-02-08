@@ -17,6 +17,7 @@ export const env = createEnv({
         VITE_PROXY_URL: z.string(),
         VITE_MASTER_SERVER_URL: z.string(),
         VITE_GAME_URL: z.string().optional(),
+        VITE_ASSETS_URL: z.string().optional(),
     },
 
     /**

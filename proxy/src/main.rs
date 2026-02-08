@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
@@ -21,10 +22,16 @@ struct Config {
     target_port: u16,
     master_server_base: String,
     use_url_params: bool,
+    send_heartbeat: bool,
+    tls_cert: Option<String>,
+    tls_key: Option<String>,
 }
 
 impl Config {
     fn from_env() -> Self {
+        let tls_cert = env::var("TLS_CERT").ok().filter(|v| !v.is_empty());
+        let tls_key = env::var("TLS_KEY").ok().filter(|v| !v.is_empty());
+
         Self {
             ws_port: env::var("WS_PORT")
                 .ok()
@@ -40,8 +47,37 @@ impl Config {
             use_url_params: env::var("USE_URL_PARAMS")
                 .map(|v| v == "true")
                 .unwrap_or(false),
+            send_heartbeat: env::var("SEND_HEARTBEAT")
+                .map(|v| v == "true")
+                .unwrap_or(true),
+            tls_cert,
+            tls_key,
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// TLS
+// ---------------------------------------------------------------------------
+
+fn build_tls_acceptor(cert_path: &str, key_path: &str) -> Result<tokio_rustls::TlsAcceptor, Box<dyn std::error::Error>> {
+    use rustls_pemfile::{certs, private_key};
+    use std::fs::File;
+    use std::io::BufReader;
+    use tokio_rustls::rustls::ServerConfig;
+
+    let cert_file = File::open(cert_path)?;
+    let certs: Vec<_> = certs(&mut BufReader::new(cert_file)).collect::<Result<Vec<_>, _>>()?;
+
+    let key_file = File::open(key_path)?;
+    let key = private_key(&mut BufReader::new(key_file))?
+        .ok_or("no private key found in key file")?;
+
+    let config = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)?;
+
+    Ok(tokio_rustls::TlsAcceptor::from(Arc::new(config)))
 }
 
 // ---------------------------------------------------------------------------
@@ -85,10 +121,12 @@ async fn heartbeat_loop(config: Config) {
 // Connection handler
 // ---------------------------------------------------------------------------
 
-async fn handle_connection(
-    stream: tokio::net::TcpStream,
+async fn handle_connection<S>(
+    stream: S,
     config: Config,
-) {
+) where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
     let uri_holder: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
     let uri_capture = uri_holder.clone();
 
@@ -234,15 +272,39 @@ fn parse_target_from_uri(uri: &str, default_host: &str, default_port: u16) -> (S
 
 #[tokio::main]
 async fn main() {
+    tokio_rustls::rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let config = Config::from_env();
+
+    // Try to build TLS acceptor
+    let tls_acceptor = match (&config.tls_cert, &config.tls_key) {
+        (Some(cert), Some(key)) => match build_tls_acceptor(cert, key) {
+            Ok(acceptor) => {
+                Some(acceptor)
+            }
+            Err(e) => {
+                eprintln!("Failed to load TLS cert/key: {}", e);
+                eprintln!("Falling back to plain ws:// mode");
+                None
+            }
+        },
+        _ => None,
+    };
 
     // Startup banner — must flush because stdout may be piped (block-buffered)
     {
         let stdout = std::io::stdout();
         let mut out = stdout.lock();
-        let _ = writeln!(out, "WS<->UDP proxy on ws://0.0.0.0:{}/", config.ws_port);
+        if tls_acceptor.is_some() {
+            let _ = writeln!(out, "WS<->UDP proxy on wss://0.0.0.0:{}/  (TLS)", config.ws_port);
+        } else {
+            let _ = writeln!(out, "WS<->UDP proxy on ws://0.0.0.0:{}/  (plain)", config.ws_port);
+        }
         let _ = writeln!(out, "Default target: {}:{}", config.target_host, config.target_port);
         let _ = writeln!(out, "USE_URL_PARAMS = {}", config.use_url_params);
+        let _ = writeln!(out, "SEND_HEARTBEAT = {}", config.send_heartbeat);
         let _ = out.flush();
     }
 
@@ -254,8 +316,8 @@ async fn main() {
         }
     };
 
-    // Heartbeat (only in default mode)
-    if !config.use_url_params {
+    // Heartbeat
+    if config.send_heartbeat {
         let hb_config = config.clone();
         tokio::spawn(heartbeat_loop(hb_config));
     }
@@ -267,33 +329,39 @@ async fn main() {
 
     loop {
         #[cfg(unix)]
-        tokio::select! {
-            result = listener.accept() => {
-                match result {
-                    Ok((stream, _addr)) => {
-                        let conn_config = config.clone();
-                        tokio::spawn(handle_connection(stream, conn_config));
-                    }
-                    Err(e) => {
-                        eprintln!("TCP accept error: {}", e);
-                    }
-                }
-            }
-            _ = sigterm.recv() => {
-                break;
-            }
-        }
+        let accept_result = tokio::select! {
+            result = listener.accept() => Some(result),
+            _ = sigterm.recv() => None,
+        };
 
         #[cfg(not(unix))]
-        {
-            match listener.accept().await {
-                Ok((stream, _addr)) => {
-                    let conn_config = config.clone();
+        let accept_result = Some(listener.accept().await);
+
+        let Some(result) = accept_result else {
+            break; // SIGTERM
+        };
+
+        match result {
+            Ok((stream, _addr)) => {
+                let conn_config = config.clone();
+                if let Some(ref acceptor) = tls_acceptor {
+                    let acceptor = acceptor.clone();
+                    tokio::spawn(async move {
+                        match acceptor.accept(stream).await {
+                            Ok(tls_stream) => {
+                                handle_connection(tls_stream, conn_config).await;
+                            }
+                            Err(e) => {
+                                eprintln!("TLS handshake error: {}", e);
+                            }
+                        }
+                    });
+                } else {
                     tokio::spawn(handle_connection(stream, conn_config));
                 }
-                Err(e) => {
-                    eprintln!("TCP accept error: {}", e);
-                }
+            }
+            Err(e) => {
+                eprintln!("TCP accept error: {}", e);
             }
         }
     }

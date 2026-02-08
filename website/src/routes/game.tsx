@@ -5,6 +5,7 @@ import z from "zod";
 const searchParams = z.object({
     host: z.string(),
     proxyPort: z.number(),
+    targetPort: z.number(),
     name: z.string(),
     config: z.string().optional()
 })

@@ -11,7 +11,7 @@ export function JoinServerButton(props: {
     function getGameUrl() {
         const name = JSON.parse(localStorage.getItem("name") || '"Q3JS Player"');
         const config = JSON.parse(localStorage.getItem("q3config") || '""');
-        return `${baseUrl}/game?host=${props.server.host}&proxyPort=${props.server.proxyPort}&name=${encodeURIComponent(name)}&config=${encodeURIComponent(config)}`;
+        return `${baseUrl}/game?host=${props.server.host}&proxyPort=${props.server.proxyPort}&targetPort=${props.server.port}&name=${encodeURIComponent(name)}&config=${encodeURIComponent(config)}`;
     }
 
     if (props.server.players >= props.server.sv_maxclients) {

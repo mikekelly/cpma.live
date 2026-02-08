@@ -1,0 +1,21 @@
+[Unit]
+Description=WebSocket-to-UDP proxy for ioq3ded (Rust, TLS)
+After=network.target q3server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/q3promode/proxy
+Environment=WS_PORT=27961
+Environment=TARGET_HOST=127.0.0.1
+Environment=TARGET_PORT=27960
+Environment=USE_URL_PARAMS=true
+Environment=SEND_HEARTBEAT=true
+Environment=MASTER_SERVER_BASE=https://master.cpma.live
+Environment=TLS_CERT=/etc/letsencrypt/live/proxy.cpma.live/fullchain.pem
+Environment=TLS_KEY=/etc/letsencrypt/live/proxy.cpma.live/privkey.pem
+ExecStart=/opt/q3promode/proxy/q3proxy
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

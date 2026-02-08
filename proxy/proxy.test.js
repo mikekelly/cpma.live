@@ -338,6 +338,7 @@ describe('proxy (USE_URL_PARAMS mode — query target, no heartbeat)', () => {
       TARGET_PORT: '1',             // should be ignored — URL params override
       MASTER_SERVER_BASE: `http://127.0.0.1:${MASTER_PORT_2}`,
       USE_URL_PARAMS: 'true',
+      SEND_HEARTBEAT: 'false',
     });
   });
 
@@ -367,7 +368,7 @@ describe('proxy (USE_URL_PARAMS mode — query target, no heartbeat)', () => {
     ws.close();
   });
 
-  it('does not send heartbeats when USE_URL_PARAMS is true', async () => {
+  it('does not send heartbeats when SEND_HEARTBEAT is false', async () => {
     // wait a generous window — if heartbeat were on it fires immediately
     await new Promise((r) => setTimeout(r, 1500));
     assert.strictEqual(masterServer.requests.length, 0,

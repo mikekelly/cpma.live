@@ -1,0 +1,16 @@
+[Unit]
+Description=ioq3ded CPMA dedicated server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/q3promode/server
+ExecStart=/opt/q3promode/server/ioq3ded \
+    +set dedicated 1 +set sv_pure 1 +set net_ip 0.0.0.0 \
+    +set com_hunkMegs 256 +set fs_game cpma +set vm_game 2 \
+    +exec server.cfg
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
