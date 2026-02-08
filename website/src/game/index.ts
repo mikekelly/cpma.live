@@ -114,6 +114,14 @@ export default function startGame({host, targetPort, name, config: extraConfig, 
 
     const dataURL = new URL(env.VITE_ASSETS_URL ?? location.origin);
 
+    // Prevent mouse4/mouse5 (browser back/forward) from navigating away.
+    // The mousedown event still reaches the Emscripten handler for key binding;
+    // auxclick is what actually triggers browser navigation for these buttons.
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    canvas.addEventListener("auxclick", (e) => {
+        if (e.button === 3 || e.button === 4) e.preventDefault();
+    });
+
     ioquake3({
         websocket: {
             url: `${getWsProtocol()}//${env.VITE_PROXY_URL}?host=${host}&port=${targetPort}`,
