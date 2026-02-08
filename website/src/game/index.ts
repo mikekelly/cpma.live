@@ -8,6 +8,7 @@ type Params = {
     host: string;
     proxyPort: number;
     name: string;
+    config?: string;
     rafUpdate: (prog: Prog) => void;
 }
 
@@ -74,7 +75,7 @@ const config = {
     },
 } as const;
 
-export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
+export default function startGame({host, proxyPort, name, config: extraConfig, rafUpdate}: Params) {
     const com_basegame = "baseq3" as const;
     const fs_basegame = "baseq3" as const;
     const fs_game = "cpma" as const;
@@ -185,6 +186,9 @@ export default function startGame({host, proxyPort, name, rafUpdate}: Params) {
                     // Write a placeholder CD key to bypass the demo CD key check
                     module.FS.mkdirTree("/baseq3");
                     module.FS.writeFile("/baseq3/q3key", "AAAABBBBCCCCDDDD");
+
+                    // Write user config as autoexec.cfg (auto-executed by the engine after q3config.cfg)
+                    module.FS.writeFile(`/${fs_game}/autoexec.cfg`, extraConfig ?? "");
 
                     if (persist) {
                         await syncfs(module, false);

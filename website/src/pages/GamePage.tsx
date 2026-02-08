@@ -12,7 +12,7 @@ export default function GamePage() {
     const [prog, setProg] = useState<Prog>({received: 0, total: 0, pct: 0, current: ""});
     const rafUpdate = makeRafUpdater(setProg);
 
-    const {host, proxyPort, name} = useSearch({
+    const {host, proxyPort, name, config} = useSearch({
         from: "/game"
     })
 
@@ -21,6 +21,7 @@ export default function GamePage() {
             name,
             host,
             proxyPort,
+            config,
             rafUpdate
         })
     }, []);

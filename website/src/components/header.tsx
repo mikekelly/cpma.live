@@ -6,7 +6,7 @@ export function Header() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <Link to={"/"} className="flex items-center gap-3">
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-foreground">Q3 Promode<span className="text-primary">.js</span></h1>
+                    <h1 className="text-xl font-bold tracking-tight text-foreground">cpma<span className="text-primary">.live</span></h1>
                 </div>
             </Link>
 
@@ -15,10 +15,10 @@ export function Header() {
                     <span className="h-2 w-2 rounded-full bg-primary animate-pulse"/>
                     Online
                 </Badge>
-                <a href={"https://discord.gg/mKvM9su443"}>
+                <a href={"https://x.com/NicerInPerson"}>
                     <Badge variant="outline"
                            className="border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">
-                        Join Discord
+                        x.com/NicerInPerson
                     </Badge>
                 </a>
             </div>

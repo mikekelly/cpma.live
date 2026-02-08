@@ -18,9 +18,12 @@ export function Footer() {
 
                 <div className="space-y-4 text-xs leading-relaxed">
                     <p>
-                        <strong className="text-foreground">Q3 Promode.js</strong> is a non-commercial fan project
-                        that lets you play CPMA (Challenge ProMode Arena) in your browser. It is not affiliated
-                        with or endorsed by id Software, ZeniMax Media, or the CPMA team.
+                        <strong className="text-foreground">cpma.live</strong> is a non-commercial fan project
+                        that lets you play CPMA (Challenge ProMode Arena) in your browser. It is a fork of{" "}
+                        <a href="https://q3js.com" className="text-primary hover:underline">
+                            q3js.com
+                        </a>
+                        . It is not affiliated with or endorsed by id Software, ZeniMax Media, or the CPMA team.
                     </p>
 
                     <p>
