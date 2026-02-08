@@ -23,6 +23,7 @@ struct Config {
     master_server_base: String,
     use_url_params: bool,
     send_heartbeat: bool,
+    heartbeat_ports: Vec<u16>,
     tls_cert: Option<String>,
     tls_key: Option<String>,
 }
@@ -32,16 +33,25 @@ impl Config {
         let tls_cert = env::var("TLS_CERT").ok().filter(|v| !v.is_empty());
         let tls_key = env::var("TLS_KEY").ok().filter(|v| !v.is_empty());
 
+        let target_port = env::var("TARGET_PORT")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(27960);
+
+        // HEARTBEAT_PORTS: comma-separated list of game server ports to heartbeat.
+        // Falls back to TARGET_PORT if not set.
+        let heartbeat_ports = env::var("HEARTBEAT_PORTS")
+            .ok()
+            .map(|v| v.split(',').filter_map(|s| s.trim().parse().ok()).collect())
+            .unwrap_or_else(|| vec![target_port]);
+
         Self {
             ws_port: env::var("WS_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(27961),
             target_host: env::var("TARGET_HOST").unwrap_or_else(|_| "127.0.0.1".into()),
-            target_port: env::var("TARGET_PORT")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(27960),
+            target_port,
             master_server_base: env::var("MASTER_SERVER_BASE")
                 .unwrap_or_else(|_| "https://master.cpma.live".into()),
             use_url_params: env::var("USE_URL_PARAMS")
@@ -50,6 +60,7 @@ impl Config {
             send_heartbeat: env::var("SEND_HEARTBEAT")
                 .map(|v| v == "true")
                 .unwrap_or(true),
+            heartbeat_ports,
             tls_cert,
             tls_key,
         }
@@ -90,29 +101,34 @@ struct HeartbeatBody {
     proxy_port: u16,
     #[serde(rename = "targetPort")]
     target_port: u16,
+    #[serde(rename = "targetHost")]
+    target_host: String,
 }
 
 async fn heartbeat_loop(config: Config) {
     let client = reqwest::Client::new();
     let url = format!("{}/api/servers/heartbeat", config.master_server_base);
-    let body = HeartbeatBody {
-        proxy_port: config.ws_port,
-        target_port: config.target_port,
-    };
 
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
 
     loop {
         interval.tick().await; // first tick fires immediately
-        let res = client.put(&url).json(&body).send().await;
-        match res {
-            Ok(r) if !r.status().is_success() => {
-                eprintln!("Heartbeat failed: {}", r.status());
+        for &port in &config.heartbeat_ports {
+            let body = HeartbeatBody {
+                proxy_port: config.ws_port,
+                target_port: port,
+                target_host: config.target_host.clone(),
+            };
+            let res = client.put(&url).json(&body).send().await;
+            match res {
+                Ok(r) if !r.status().is_success() => {
+                    eprintln!("Heartbeat failed for port {}: {}", port, r.status());
+                }
+                Err(e) => {
+                    eprintln!("Heartbeat error for port {}: {}", port, e);
+                }
+                _ => {}
             }
-            Err(e) => {
-                eprintln!("Heartbeat error: {}", e);
-            }
-            _ => {}
         }
     }
 }
@@ -130,11 +146,16 @@ async fn handle_connection<S>(
     let uri_holder: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
     let uri_capture = uri_holder.clone();
 
-    let ws_stream = match tokio_tungstenite::accept_hdr_async(stream, |req: &Request, resp: Response| {
+    let ws_stream = match tokio_tungstenite::accept_hdr_async(stream, |req: &Request, mut resp: Response| {
         let uri = req.uri().to_string();
         // We can't await inside this sync callback, so use try_lock / blocking approach
         if let Ok(mut guard) = uri_capture.try_lock() {
             *guard = uri;
+        }
+        // Echo back the requested subprotocol (e.g. "binary") — browsers close
+        // the connection if they request a subprotocol and the server doesn't confirm it.
+        if let Some(proto) = req.headers().get("sec-websocket-protocol") {
+            resp.headers_mut().insert("sec-websocket-protocol", proto.clone());
         }
         Ok(resp)
     })

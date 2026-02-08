@@ -7,7 +7,6 @@ import {env} from "@/env.ts";
 
 type Params = {
     host: string;
-    proxyPort: number;
     targetPort: number;
     name: string;
     config?: string;
@@ -73,11 +72,20 @@ const config = {
             {src: "cpma/map_cpmctf2.pk3", dst: "/cpma"},
             {src: "cpma/map_cpmctf3.pk3", dst: "/cpma"},
             {src: "cpma/map_cpmctf5.pk3", dst: "/cpma"},
+            {src: "cpma/b0_beta6.pk3", dst: "/cpma"},
+            {src: "cpma/hektik_b3.pk3", dst: "/cpma"},
+            {src: "cpma/tr1ckhouse-beta3.pk3", dst: "/cpma"},
+            {src: "cpma/cos1_beta7b.pk3", dst: "/cpma"},
+            {src: "cpma/xcm_tricks2.pk3", dst: "/cpma"},
+            {src: "cpma/hangtime-df.pk3", dst: "/cpma"},
+            {src: "cpma/hangtime2-df.pk3", dst: "/cpma"},
+            {src: "cpma/ump1.pk3", dst: "/cpma"},
+            {src: "cpma/ump3.pk3", dst: "/cpma"},
         ],
     },
 } as const;
 
-export default function startGame({host, proxyPort, targetPort, name, config: extraConfig, rafUpdate}: Params) {
+export default function startGame({host, targetPort, name, config: extraConfig, rafUpdate}: Params) {
     const com_basegame = "baseq3" as const;
     const fs_basegame = "baseq3" as const;
     const fs_game = "cpma" as const;
@@ -97,7 +105,7 @@ export default function startGame({host, proxyPort, targetPort, name, config: ex
           +set model sarge
           +set headmodel sarge
         `;
-    generatedArguments += ` +connect ${host}:${proxyPort} `;
+    generatedArguments += ` +connect ${env.VITE_PROXY_URL} `;
     generatedArguments += ` +set name "${name.replace(/"/g, "'")}" `;
 
     if (name === "^1L^2K") {

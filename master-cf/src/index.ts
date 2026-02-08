@@ -44,16 +44,14 @@ export class MasterServer extends DurableObject<Env> {
     }
 
     if (url.pathname === "/api/servers/heartbeat" && request.method === "PUT") {
-      const ip = request.headers.get("CF-Connecting-IP");
-      if (!ip) {
-        return new Response("Missing IP", { status: 400, headers: cors });
-      }
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
 
-      const body = await request.json<{ proxyPort: number; targetPort: number }>();
-      const key = `${ip}:${body.proxyPort}`;
+      const body = await request.json<{ proxyPort: number; targetPort: number; targetHost?: string }>();
+      const host = body.targetHost ?? ip;
+      const key = `${ip}:${body.proxyPort}:${body.targetPort}`;
 
       this.servers.set(key, {
-        host: ip,
+        host,
         proxyPort: body.proxyPort,
         targetPort: body.targetPort,
         lastHeartbeat: Date.now(),
