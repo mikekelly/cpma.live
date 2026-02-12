@@ -5,8 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 TMP_DIR="${ROOT_DIR}/.assets-tmp"
 
-CLIENT_BASEQ3="${ROOT_DIR}/website/public/baseq3"
-CLIENT_CPMA="${ROOT_DIR}/website/public/cpma"
+CLIENT_BASEQ3="${ROOT_DIR}/website/game-assets/baseq3"
+CLIENT_CPMA="${ROOT_DIR}/website/game-assets/cpma"
 SERVER_BASEQ3="${ROOT_DIR}/server/baseq3"
 SERVER_CPMA="${ROOT_DIR}/server/cpma"
 
