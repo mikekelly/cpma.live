@@ -18,7 +18,7 @@ export function Header() {
                 <a href={"https://x.com/NicerInPerson"}>
                     <Badge variant="outline"
                            className="border-muted-foreground/30 text-muted-foreground hover:border-foreground hover:text-foreground transition-colors">
-                        x.com/NicerInPerson
+                        by @NicerInPerson
                     </Badge>
                 </a>
             </div>

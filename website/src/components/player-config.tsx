@@ -3,7 +3,7 @@ import {Input} from "@/components/ui/input.tsx";
 
 export function PlayerConfig() {
     const [name, setName] = useLocalStorage("name", "Q3JS Player")
-    const [config, setConfig] = useLocalStorage("q3config", "")
+    const [config, setConfig] = useLocalStorage("q3config", "seta cg_fov 110")
 
     return (
         <div className="space-y-4">
