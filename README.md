@@ -34,6 +34,49 @@ Browser (React + ioquake3.wasm)
 | `scripts/`   | Asset upload and utility scripts                                    |
 | `ioq3/`      | Submodule — ioquake3 source                                        |
 
+## Prerequisites
+
+Before building or running anything, you need the git submodules and the game
+data. Neither is committed to this repo — the submodules are upstream sources and
+the game assets are copyrighted id Software data.
+
+### 1. Submodules (`ioq3`, `emsdk`)
+
+The engine source and the Emscripten SDK used to compile the WebAssembly client
+are git submodules. Clone them after checkout:
+
+```bash
+git submodule update --init --recursive
+```
+
+- `ioq3/` — ioquake3 engine source (needed to build both the wasm client and the native `ioq3ded` server).
+- `emsdk/` — Emscripten SDK, used by `game/build.sh` to compile the engine to `ioquake3.{js,wasm}`. After init, activate it once:
+
+  ```bash
+  cd emsdk && ./emsdk install latest && ./emsdk activate latest && cd ..
+  ```
+
+  > A prebuilt `ioquake3.{js,wasm}` is already committed under `website/src/lib/`,
+  > so `emsdk` is only required if you want to **rebuild** the client.
+
+### 2. Game assets (pak files)
+
+The `.pk3` game data (Quake 3 demo paks, hi-res textures, CPMA 1.53, map pack,
+etc.) is **not** in the repo and is git-ignored. Download it with:
+
+```bash
+./scripts/download-assets.sh
+```
+
+This populates both the client (`website/game-assets/`) and the server
+(`server/baseq3/`, `server/cpma/`) trees. Sources include the Quake 3 demo paks,
+ioquake3 patch paks, and CPMA 1.53 from playmorepromode.com. The script is
+idempotent — it skips files that already exist.
+
+Once downloaded, upload the assets to Cloudflare R2 (see
+[Game assets](#game-assets-cloudflare-r2) under Deployment) so the browser client
+can fetch them at runtime.
+
 ## Deployment
 
 ### Website (Cloudflare Pages)
@@ -91,11 +134,14 @@ VPS directory layout:
 
 ## Local development
 
-1. **Build the WebAssembly client**
+> First complete the [Prerequisites](#prerequisites): init the submodules and run
+> `./scripts/download-assets.sh`. The client and server both need the `.pk3` data.
+
+1. **Build the WebAssembly client** (optional — a prebuilt copy is already committed)
    ```bash
    cd game && ./build.sh
    ```
-   Copies `ioquake3.{js,wasm}` into `website/src/lib/`.
+   Compiles `ioq3` via `emsdk` and copies `ioquake3.{js,wasm}` into `website/src/lib/`.
 
 2. **Run the website**
    ```bash
@@ -124,5 +170,5 @@ VPS directory layout:
 ## License & credits
 
 - Engine source derived from [ioquake3](https://github.com/ioquake/ioq3) (GPLv2). See `ioq3/`.
-- Game assets remain (c) id Software / Bethesda. Supply your own `baseq3` data.
+- Game assets remain (c) id Software / Bethesda. Supply your own `baseq3` data — see [Prerequisites](#2-game-assets-pak-files).
 - WebSocket proxy and integration glue by [lklacar](https://github.com/lklacar).
